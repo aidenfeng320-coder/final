@@ -1,21 +1,20 @@
 package javaapplication6;
 
 import processing.core.PApplet;
-import processing.core.PImage;
 
-public class Player extends Actor {
+public class Player extends Entity {
+    private float speed = 2.5f;
     private boolean up;
     private boolean down;
     private boolean left;
     private boolean right;
-    private int worldW;
-    private int worldH;
-    private int speed = 3;
 
-    public Player(PApplet app, int x, int y, SpriteSet sprites) {
-        super(app, 120, 15, 5, x, y, sprites.walk, sprites.stand);
-        this.w = 40;
-        this.h = 40;
+    private boolean shadowVision;
+    private int visionTimer;
+    private int cooldownTimer;
+
+    public Player(float x, float y) {
+        super(x, y, 24, 24);
     }
 
     public void setInput(boolean up, boolean down, boolean left, boolean right) {
@@ -25,60 +24,64 @@ public class Player extends Actor {
         this.right = right;
     }
 
-    @Override
-    public void update() {
-        update(worldH, worldW);
-    }
-
-    public void update(int worldH, int worldW) {
-        this.worldH = worldH;
-        this.worldW = worldW;
-        beginFrame();
-
-        int nx = 0;
-        int ny = 0;
-        if (up) {
-            ny -= speed;
-        }
-        if (down) {
-            ny += speed;
-        }
-        if (left) {
-            nx -= speed;
-        }
-        if (right) {
-            nx += speed;
-        }
-
-        move(nx, ny);
-        endFrame();
-
-        if (x < 0) {
-            x = 0;
-        }
-        if (y < 0) {
-            y = 0;
-        }
-        if (x + w > worldW) {
-            x = worldW - w;
-        }
-        if (y + h > worldH) {
-            y = worldH - h;
+    public void toggleShadowVision() {
+        if (shadowVision) {
+            shadowVision = false;
+            cooldownTimer = 360;
+        } else if (cooldownTimer <= 0) {
+            shadowVision = true;
+            visionTimer = 240;
         }
     }
 
-    public void draw() {
-        if (app == null) {
-            return;
+    public void update(TileMap map) {
+        float nx = 0;
+        float ny = 0;
+        if (up) ny -= speed;
+        if (down) ny += speed;
+        if (left) nx -= speed;
+        if (right) nx += speed;
+
+        move(map, nx, ny);
+
+        if (shadowVision) {
+            visionTimer--;
+            if (visionTimer <= 0) {
+                shadowVision = false;
+                cooldownTimer = 360;
+            }
+        } else if (cooldownTimer > 0) {
+            cooldownTimer--;
         }
-        PImage img = currentImage();
-        if (img != null) {
-            app.image(img, x, y, w, h);
-            return;
+    }
+
+    private void move(TileMap map, float nx, float ny) {
+        float nextX = x + nx;
+        if (!map.collides(nextX, y, w, h)) {
+            x = nextX;
         }
+        float nextY = y + ny;
+        if (!map.collides(x, nextY, w, h)) {
+            y = nextY;
+        }
+    }
+
+    public boolean isShadowVision() {
+        return shadowVision;
+    }
+
+    public int getCooldownSeconds() {
+        return cooldownTimer / 60;
+    }
+
+    public int getVisionSeconds() {
+        return visionTimer / 60;
+    }
+
+    public void draw(PApplet app) {
         app.pushStyle();
-        app.fill(200, 220, 255);
-        app.stroke(40, 60, 90);
+        app.fill(80, 180, 220);
+        app.stroke(20, 40, 60);
         app.rect(x, y, w, h, 6);
         app.popStyle();
     }
