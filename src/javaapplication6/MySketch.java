@@ -5,7 +5,7 @@ import processing.core.PImage;
 
 /**
  * Fixed-camera mini game inspired by the Skywoman story, mixed with Chinese legends.
- * Move, talk to NPCs, and collect relics to complete the quest.
+ * Intro story -> gameplay -> ending.
  */
 public class MySketch extends PApplet {
     private PImage bg;
@@ -20,39 +20,49 @@ public class MySketch extends PApplet {
     private boolean up, down, left, right;
     private Task task;
     private Actor[] actors;
-    private Collectible[] relics;
-    private Gate spiritGate;
-    private boolean gateHintUnlocked;
+    private Collectible[] seals;
+    private ShenTan altar;
 
-    // 2D array: map of relic positions (x, y)
-    private final int[][] relicMap = {
-        {140, 140},
-        {480, 220},
-        {800, 560}
+    private static final int STATE_INTRO = 0;
+    private static final int STATE_PLAY = 1;
+    private static final int STATE_END = 2;
+    private int gameState = STATE_INTRO;
+    private int introIndex = 0;
+    private long startMillis;
+    private int timeLimitSeconds = 90;
+    private boolean win;
+
+    // 2D array: map of seal positions (x, y)
+    private final int[][] sealMap = {
+        {140, 160},
+        {520, 200},
+        {820, 560}
+    };
+
+    private final String[] introLines = {
+        "A sky-born girl drifted down like a seed over the sea.",
+        "She carried a bundle of stars and a promise to bring light.",
+        "In this village, the ancient seals are fading.",
+        "Find the three paper seals and return to the altar.",
+        "Press SPACE to continue."
     };
 
     private final String[] storyLines = {
-        "A star maiden fell from the sky like a drifting seed.",
-        "She says the village lanterns are fading, just like in the old legends.",
-        "Collect three Celestial Relics to rebuild the bridge of light."
+        "I saw the sky maiden fall near the river stones.",
+        "She whispered about a broken sky bridge.",
+        "Find the three paper seals to calm the storm."
     };
 
     private final String[] hintLines = {
-        "The Weaver Girl left a silver shuttle by the river.",
-        "The White Snake guards the ancient well—offer her a calm heart.",
-        "Press E to talk. Walk over glowing relics to collect them."
+        "The Weaver Girl hid a seal by the old loom.",
+        "The White Snake sleeps near the well. Stay gentle.",
+        "Use WASD to move. Walk over seals to collect them."
     };
 
     private final String[] guideLines = {
-        "From the Classic of Mountains and Seas: the Kunpeng swims as a fish,",
-        "then rises as a bird. Follow its lesson: be patient, then be swift.",
-        "Use WASD to move. Find all relics to complete the quest."
-    };
-
-    private final String[] gateLines = {
-        "When the relics glow together, the Spirit Gate awakens.",
-        "Stand near the gate and press E to open it.",
-        "Beyond it is the blessing of Nuwa's sky-mending legend."
+        "The Kunpeng changes from fish to bird in the mountains and seas.",
+        "Be slow when searching, be swift when returning.",
+        "Bring the seals back to the altar to finish the ritual."
     };
 
     @Override
@@ -77,46 +87,51 @@ public class MySketch extends PApplet {
         spritesPlayer.load(this, 40, 48, "images/Character_Walk.png", "images/Character_Idle.png");
 
         player = new Player(this, width / 2, height / 2, spritesPlayer);
-        npcStory = new NPC(this, 200, 240, spritesNpc1, storyLines);
-        npcHint = new NPC(this, 720, 420, spritesNpc2, hintLines);
+        npcStory = new NPC(this, 200, 260, spritesNpc1, storyLines);
+        npcHint = new NPC(this, 760, 420, spritesNpc2, hintLines);
         npcGuide = new NPC(this, 520, 120, spritesNpc3, guideLines);
 
         task = new Task(
-            "Quest: Celestial Relics",
-            "Gather three relics to restore the sky bridge.",
-            relicMap.length
+            "Quest: Paper Seals",
+            "Collect three seals, then return to the altar.",
+            sealMap.length
         );
-        // build gameplay items and attempt to load a saved progress file
-        buildRelics();
-        loadProgress();
+
+        buildSeals();
+        altar = new ShenTan(880, 120, 120, 140);
 
         actors = new Actor[] { player, npcStory, npcHint, npcGuide };
-        spiritGate = new Gate(880, 120, 120, 160);
+        startMillis = millis();
     }
 
     @Override
     public void draw() {
-        if (npcStory.isTalking() || npcHint.isTalking() || npcGuide.isTalking()) {
-            player.setInput(false, false, false, false);
-        } else {
-            player.setInput(up, down, left, right);
-        }
-
-        // update all actors every frame
-        updateActors();
-        collectRelics();
-
         if (bg != null) {
             image(bg, 0, 0, width, height);
         } else {
             background(32, 40, 60);
         }
 
-        drawRelics();
-        spiritGate.draw(this);
+        if (gameState == STATE_INTRO) {
+            drawIntro();
+            return;
+        }
+
+        if (npcStory.isTalking() || npcHint.isTalking() || npcGuide.isTalking()) {
+            player.setInput(false, false, false, false);
+        } else {
+            player.setInput(up, down, left, right);
+        }
+
+        updateActors();
+        collectSeals();
+
+        drawSeals();
+        altar.draw(this);
         drawActors();
 
         task.draw(this);
+        drawTimer();
 
         if (npcStory.isTalking()) {
             drawDialogBox(npcStory.currentLine());
@@ -124,15 +139,30 @@ public class MySketch extends PApplet {
             drawDialogBox(npcHint.currentLine());
         } else if (npcGuide.isTalking()) {
             drawDialogBox(npcGuide.currentLine());
-        } else if (spiritGate.isOpened()) {
-            drawDialogBox("The gate is open. The village is safe once more.");
-        } else if (task.isComplete()) {
-            drawDialogBox("The sky bridge shines again. Find the Spirit Gate.");
+        }
+
+        if (gameState == STATE_END) {
+            if (win) {
+                drawDialogBox("The ritual holds. The sky bridge is calm again.");
+            } else {
+                drawDialogBox("The seals failed. The storm returns. Press R to retry.");
+            }
         }
     }
 
     @Override
     public void keyPressed() {
+        if (gameState == STATE_INTRO) {
+            if (key == ' ') {
+                introIndex++;
+                if (introIndex >= introLines.length) {
+                    gameState = STATE_PLAY;
+                    startMillis = millis();
+                }
+            }
+            return;
+        }
+
         if (key == 'w' || key == 'W') {
             up = true;
         }
@@ -164,14 +194,13 @@ public class MySketch extends PApplet {
                 } else {
                     npcGuide.nextTalk();
                 }
-            } else if (task.isComplete() && spiritGate.intersects(player)) {
-                spiritGate.open();
-                task.setDescription("The gate is open. Press R to restart.");
+            } else if (task.isComplete() && altar.intersects(player)) {
+                win = true;
+                gameState = STATE_END;
             }
         }
         if (key == 'r' || key == 'R') {
-            // restart the relic hunt
-            resetRelics();
+            resetGame();
         }
     }
 
@@ -189,6 +218,18 @@ public class MySketch extends PApplet {
         if (key == 'd' || key == 'D') {
             right = false;
         }
+    }
+
+    private void drawIntro() {
+        pushStyle();
+        fill(0, 180);
+        rect(60, 120, width - 120, height - 240, 16);
+        fill(255);
+        textSize(20);
+        textAlign(LEFT, TOP);
+        String line = introLines[Math.min(introIndex, introLines.length - 1)];
+        text(line, 90, 150, width - 180, height - 300);
+        popStyle();
     }
 
     private void drawDialogBox(String msg) {
@@ -215,19 +256,13 @@ public class MySketch extends PApplet {
         popStyle();
     }
 
-    /**
-     * Build all relics from the 2D map.
-     */
-    private void buildRelics() {
-        relics = new Collectible[relicMap.length];
-        for (int i = 0; i < relicMap.length; i++) {
-            relics[i] = new Collectible(relicMap[i][0], relicMap[i][1], 26);
+    private void buildSeals() {
+        seals = new Collectible[sealMap.length];
+        for (int i = 0; i < sealMap.length; i++) {
+            seals[i] = new Collectible(sealMap[i][0], sealMap[i][1], 26);
         }
     }
 
-    /**
-     * Check if an actor is close to a point.
-     */
     private boolean isNear(Actor actor, float rx, float ry, float range) {
         float dx = (actor.x + actor.w / 2f) - rx;
         float dy = (actor.y + actor.h / 2f) - ry;
@@ -254,79 +289,61 @@ public class MySketch extends PApplet {
         }
     }
 
-    private void drawRelics() {
-        for (Collectible relic : relics) {
-            if (!relic.isCollected() && isNear(player, relic.centerX(), relic.centerY(), 80)) {
+    private void drawSeals() {
+        for (Collectible seal : seals) {
+            if (!seal.isCollected() && isNear(player, seal.centerX(), seal.centerY(), 80)) {
                 pushStyle();
                 noFill();
                 stroke(255, 240, 150);
                 strokeWeight(2);
-                ellipse(relic.centerX(), relic.centerY(), relic.getSize() + 16, relic.getSize() + 16);
+                ellipse(seal.centerX(), seal.centerY(), seal.getSize() + 16, seal.getSize() + 16);
                 popStyle();
             }
-            relic.draw(this);
+            seal.draw(this);
         }
     }
 
-    private void collectRelics() {
-        for (Collectible relic : relics) {
-            if (relic.intersects(player) && !relic.isCollected()) {
-                relic.collect();
+    private void collectSeals() {
+        for (Collectible seal : seals) {
+            if (seal.intersects(player) && !seal.isCollected()) {
+                seal.collect();
                 task.addFound();
-                saveProgress();
             }
         }
         if (task.isComplete()) {
-            task.setDescription("Find the Spirit Gate and press E to open it.");
-            if (!gateHintUnlocked) {
-                npcGuide.setText(gateLines);
-                gateHintUnlocked = true;
-            }
+            task.setDescription("Return to the altar and press E to finish the ritual.");
         }
     }
 
-    private void resetRelics() {
-        buildRelics();
+    private void drawTimer() {
+        int elapsed = (int) ((millis() - startMillis) / 1000);
+        int remaining = timeLimitSeconds - elapsed;
+        if (remaining <= 0 && gameState == STATE_PLAY) {
+            win = false;
+            gameState = STATE_END;
+        }
+        pushStyle();
+        fill(0, 150);
+        rect(width - 170, 12, 150, 40, 10);
+        fill(255);
+        textSize(14);
+        textAlign(LEFT, TOP);
+        text("Time: " + max(0, remaining), width - 158, 22);
+        popStyle();
+    }
+
+    private void resetGame() {
+        buildSeals();
         task = new Task(
-            "Quest: Celestial Relics",
-            "Gather three relics to restore the sky bridge.",
-            relicMap.length
+            "Quest: Paper Seals",
+            "Collect three seals, then return to the altar.",
+            sealMap.length
         );
-        spiritGate = new Gate(880, 120, 120, 160);
-        gateHintUnlocked = false;
-        saveProgress();
-    }
-
-    /**
-     * Load progress from a flat text file. If it does not exist, start fresh.
-     */
-    private void loadProgress() {
-        String[] data = loadStrings("progress.txt");
-        if (data == null || data.length == 0) {
-            return;
-        }
-        try {
-            int found = Integer.parseInt(data[0].trim());
-            for (int i = 0; i < relics.length; i++) {
-                if (i < found) {
-                    relics[i].collect();
-                    task.addFound();
-                }
-            }
-            if (task.isComplete()) {
-                task.setDescription("Find the Spirit Gate and press E to open it.");
-                npcGuide.setText(gateLines);
-                gateHintUnlocked = true;
-            }
-        } catch (NumberFormatException ignored) {
-        }
-    }
-
-    /**
-     * Save progress to a flat text file.
-     */
-    private void saveProgress() {
-        saveStrings("progress.txt", new String[] { String.valueOf(task.getFound()) });
+        altar = new ShenTan(880, 120, 120, 140);
+        gameState = STATE_INTRO;
+        introIndex = 0;
+        win = false;
+        startMillis = millis();
     }
 
     public static void main(String[] args) {
