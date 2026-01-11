@@ -50,25 +50,34 @@ public abstract class Actor {
 
         frameCounter = 0;
 
-        if (moving && walk != null && walk[dir] != null) {
-            frameIndex = (frameIndex + 1) % walk[dir].length;
-        } else if (stand != null && stand[dir] != null) {
-            frameIndex = (frameIndex + 1) % stand[dir].length;
+        int safeDir = dir;
+        if (stand != null && stand.length > 0) {
+            safeDir = Math.min(dir, stand.length - 1);
+        }
+
+        if (moving && walk != null && safeDir < walk.length && walk[safeDir] != null && walk[safeDir].length > 0) {
+            frameIndex = (frameIndex + 1) % walk[safeDir].length;
+        } else if (stand != null && safeDir < stand.length && stand[safeDir] != null && stand[safeDir].length > 0) {
+            frameIndex = (frameIndex + 1) % stand[safeDir].length;
         }
     }
 
     protected PImage currentImage() {
-        if (stand == null || stand[dir] == null) {
+        if (stand == null || stand.length == 0) {
             return null;
         }
 
-        if (moving && walk != null && walk[dir] != null && walk[dir].length > 0) {
-            int idx = frameIndex % walk[dir].length;
-            return walk[dir][idx];
+        int safeDir = Math.min(dir, stand.length - 1);
+        if (moving && walk != null && safeDir < walk.length && walk[safeDir] != null && walk[safeDir].length > 0) {
+            int idx = frameIndex % walk[safeDir].length;
+            return walk[safeDir][idx];
         }
 
-        int idx = frameIndex % stand[dir].length;
-        return stand[dir][idx];
+        if (stand[safeDir] == null || stand[safeDir].length == 0) {
+            return null;
+        }
+        int idx = frameIndex % stand[safeDir].length;
+        return stand[safeDir][idx];
     }
 
     protected void move(int nx, int ny) {
