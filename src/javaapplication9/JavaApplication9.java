@@ -4,6 +4,9 @@
  */
 package javaapplication9;
 
+import javaapplication6.MySketch;
+import processing.core.PApplet;
+
 /**
  *
  * @author aiden f
@@ -14,7 +17,7 @@ public class JavaApplication9 {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        // TODO code application logic here
+        PApplet.main(MySketch.class.getName());
     }
     
 }
