@@ -4,7 +4,6 @@ import processing.core.PApplet;
 import processing.core.PImage;
 
 public abstract class Actor {
-
     protected PApplet app;
     public static final int UP = 0;
     public static final int LEFT = 1;
@@ -14,20 +13,19 @@ public abstract class Actor {
     protected int hp;
     protected int attack;
     protected int defense;
-
     protected int x, y;
     protected int w, h;
 
     protected int dir = UP;
     protected boolean moving = false;
 
-    protected PImage walk[][];
-    protected PImage stand[][];
+    protected PImage[][] walk;
+    protected PImage[][] stand;
     protected int frameIndex = 0;
     protected int frameCounter = 0;
     protected int frameDelay = 6;
 
-    public Actor(PApplet app, int hp, int attack, int defense, int x, int y, PImage walk[][], PImage stand[][]) {
+    public Actor(PApplet app, int hp, int attack, int defense, int x, int y, PImage[][] walk, PImage[][] stand) {
         this.app = app;
         this.hp = hp;
         this.attack = attack;
@@ -47,14 +45,12 @@ public abstract class Actor {
         if (frameCounter < frameDelay) {
             return;
         }
-
         frameCounter = 0;
 
         int safeDir = dir;
         if (stand != null && stand.length > 0) {
             safeDir = Math.min(dir, stand.length - 1);
         }
-
         if (moving && walk != null && safeDir < walk.length && walk[safeDir] != null && walk[safeDir].length > 0) {
             frameIndex = (frameIndex + 1) % walk[safeDir].length;
         } else if (stand != null && safeDir < stand.length && stand[safeDir] != null && stand[safeDir].length > 0) {
