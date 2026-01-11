@@ -10,17 +10,8 @@ public class MySketch extends PApplet {
     private float camX = 0;
     private float camY = 0;
     private Player player;
-    private NPC npc1;
     private SpriteSet spritesPlayer;
-    private SpriteSet spritesNpc1;
     private boolean up, down, left, right;
-    private Task task;
-
-    private final String[] text = {
-        "Something is wrong with the village lately...",
-        "Some villagers look the same, but they are no longer themselves.",
-        "The Chimei have possessed them. You must find them."
-    };
 
     @Override
     public void settings() {
@@ -33,28 +24,14 @@ public class MySketch extends PApplet {
         imageMode(CORNER);
         bg = loadImage("images/bg.png");
         spritesPlayer = new SpriteSet();
-        spritesNpc1 = new SpriteSet();
-        spritesNpc1.load(this, 64, 64, "images/NPC1_Idle_full.png");
         spritesPlayer.load(this, 40, 48, "images/Character_Walk.png", "images/Character_Idle.png");
         player = new Player(this, width / 2, height / 2, spritesPlayer);
-        npc1 = new NPC(this, 300, 300, spritesNpc1, text);
-        task = new Task(
-            "Quest: Expose the Chimei",
-            "Find villagers possessed by the Chimei.",
-            3
-        );
     }
 
     @Override
     public void draw() {
-        if (npc1.isTalking()) {
-            player.setInput(false, false, false, false);
-        } else {
-            player.setInput(up, down, left, right);
-        }
-
+        player.setInput(up, down, left, right);
         player.update(worldH, worldW);
-        npc1.update();
         camX = player.x + player.w / 2f - width / 2f;
         camY = player.y + player.h / 2f - height / 2f;
         if (camX < 0) camX = 0;
@@ -70,13 +47,7 @@ public class MySketch extends PApplet {
             background(40, 60, 80);
         }
         player.draw();
-        npc1.draw();
         popMatrix();
-
-        task.draw(this);
-        if (npc1.isTalking()) {
-            drawDialogBox(npc1.currentLine());
-        }
     }
 
     @Override
@@ -85,16 +56,6 @@ public class MySketch extends PApplet {
         if (key == 's' || key == 'S') down = true;
         if (key == 'a' || key == 'A') left = true;
         if (key == 'd' || key == 'D') right = true;
-        if (key == 'e' || key == 'E') {
-            if (player.intersects(npc1)) {
-                if (!npc1.isTalking()) {
-                    npc1.startTalking();
-                } else {
-                    npc1.nextTalk();
-                }
-            }
-        }
-        if (key == 'p' || key == 'P') task.addFound();
     }
 
     @Override
