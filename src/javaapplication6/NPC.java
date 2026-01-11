@@ -5,7 +5,7 @@ import processing.core.PImage;
 
 public class NPC extends Actor {
 
-    private final String[] text;
+    private String[] text;
     private boolean talking = false;
     private int lineIndex;
 
@@ -42,6 +42,11 @@ public class NPC extends Actor {
             return "";
         }
         return text[lineIndex];
+    }
+
+    public void setText(String[] text) {
+        this.text = text;
+        this.lineIndex = 0;
     }
 
     @Override

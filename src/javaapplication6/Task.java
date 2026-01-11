@@ -9,7 +9,7 @@ public class Task {
     // static variable: total relics found across all tasks (demo requirement)
     public static int totalFoundAcrossRuns = 0;
     private final String title;
-    private final String description;
+    private String description;
     private final int total;
     private int found;
 
@@ -38,6 +38,10 @@ public class Task {
 
     public int getFound() {
         return found;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public void draw(PApplet app) {

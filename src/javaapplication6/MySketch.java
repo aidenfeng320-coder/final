@@ -21,6 +21,8 @@ public class MySketch extends PApplet {
     private Task task;
     private Actor[] actors;
     private Collectible[] relics;
+    private Gate spiritGate;
+    private boolean gateHintUnlocked;
 
     // 2D array: map of relic positions (x, y)
     private final int[][] relicMap = {
@@ -45,6 +47,12 @@ public class MySketch extends PApplet {
         "From the Classic of Mountains and Seas: the Kunpeng swims as a fish,",
         "then rises as a bird. Follow its lesson: be patient, then be swift.",
         "Use WASD to move. Find all relics to complete the quest."
+    };
+
+    private final String[] gateLines = {
+        "When the relics glow together, the Spirit Gate awakens.",
+        "Stand near the gate and press E to open it.",
+        "Beyond it is the blessing of Nuwa's sky-mending legend."
     };
 
     @Override
@@ -83,6 +91,7 @@ public class MySketch extends PApplet {
         loadProgress();
 
         actors = new Actor[] { player, npcStory, npcHint, npcGuide };
+        spiritGate = new Gate(880, 120, 120, 160);
     }
 
     @Override
@@ -104,6 +113,7 @@ public class MySketch extends PApplet {
         }
 
         drawRelics();
+        spiritGate.draw(this);
         drawActors();
 
         task.draw(this);
@@ -114,8 +124,10 @@ public class MySketch extends PApplet {
             drawDialogBox(npcHint.currentLine());
         } else if (npcGuide.isTalking()) {
             drawDialogBox(npcGuide.currentLine());
+        } else if (spiritGate.isOpened()) {
+            drawDialogBox("The gate is open. The village is safe once more.");
         } else if (task.isComplete()) {
-            drawDialogBox("The sky bridge shines again. Press R to restart.");
+            drawDialogBox("The sky bridge shines again. Find the Spirit Gate.");
         }
     }
 
@@ -152,6 +164,9 @@ public class MySketch extends PApplet {
                 } else {
                     npcGuide.nextTalk();
                 }
+            } else if (task.isComplete() && spiritGate.intersects(player)) {
+                spiritGate.open();
+                task.setDescription("The gate is open. Press R to restart.");
             }
         }
         if (key == 'r' || key == 'R') {
@@ -261,6 +276,13 @@ public class MySketch extends PApplet {
                 saveProgress();
             }
         }
+        if (task.isComplete()) {
+            task.setDescription("Find the Spirit Gate and press E to open it.");
+            if (!gateHintUnlocked) {
+                npcGuide.setText(gateLines);
+                gateHintUnlocked = true;
+            }
+        }
     }
 
     private void resetRelics() {
@@ -270,6 +292,8 @@ public class MySketch extends PApplet {
             "Gather three relics to restore the sky bridge.",
             relicMap.length
         );
+        spiritGate = new Gate(880, 120, 120, 160);
+        gateHintUnlocked = false;
         saveProgress();
     }
 
@@ -288,6 +312,11 @@ public class MySketch extends PApplet {
                     relics[i].collect();
                     task.addFound();
                 }
+            }
+            if (task.isComplete()) {
+                task.setDescription("Find the Spirit Gate and press E to open it.");
+                npcGuide.setText(gateLines);
+                gateHintUnlocked = true;
             }
         } catch (NumberFormatException ignored) {
         }
