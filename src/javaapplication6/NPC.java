@@ -5,7 +5,7 @@ import processing.core.PImage;
 
 public class NPC extends Actor {
 
-    private final String[] text;
+    private String[] text;
     private boolean talking = false;
     private int lineIndex;
 
@@ -44,6 +44,11 @@ public class NPC extends Actor {
         return text[lineIndex];
     }
 
+    public void setText(String[] text) {
+        this.text = text;
+        this.lineIndex = 0;
+    }
+
     @Override
     public void update() {
         beginFrame();
@@ -51,10 +56,18 @@ public class NPC extends Actor {
     }
 
     public void draw() {
-        PImage img = currentImage();
-        if (img == null) {
+        if (app == null) {
             return;
         }
-        app.image(img, x, y, w, h);
+        PImage img = currentImage();
+        if (img != null) {
+            app.image(img, x, y, w, h);
+            return;
+        }
+        app.pushStyle();
+        app.fill(255, 230, 200);
+        app.stroke(90, 60, 40);
+        app.rect(x, y, w, h, 6);
+        app.popStyle();
     }
 }

@@ -1,6 +1,7 @@
 package javaapplication6;
 
 import processing.core.PApplet;
+import processing.core.PImage;
 
 public class Player extends Actor {
     private boolean up;
@@ -67,6 +68,18 @@ public class Player extends Actor {
     }
 
     public void draw() {
-        app.image(currentImage(), x, y, w, h);
+        if (app == null) {
+            return;
+        }
+        PImage img = currentImage();
+        if (img != null) {
+            app.image(img, x, y, w, h);
+            return;
+        }
+        app.pushStyle();
+        app.fill(200, 220, 255);
+        app.stroke(40, 60, 90);
+        app.rect(x, y, w, h, 6);
+        app.popStyle();
     }
 }
